@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PhishGuard AI — SOC Dashboard</title>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* Dashboard-specific extras */
+  .dash-hero {
+    text-align: center;
+    padding: 36px 0 28px;
+  }
+  .dash-hero h2 {
+    font-family: var(--font-display);
+    font-size: 30px; font-weight: 900; letter-spacing: 3px;
+    background: linear-gradient(90deg, #fff 0%, var(--neon-blue) 60%, var(--neon-green) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .dash-hero p {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-muted); letter-spacing: 2px;
+  }
+  .threat-bar-wrap {
+    background: var(--bg-card); border-radius: 8px;
+    overflow: hidden; height: 8px; margin-top: 8px;
+  }
+  .threat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-red), var(--neon-yellow));
+    transition: width 1.2s ease;
+  }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 11px;
+    background: rgba(255,45,85,.1); border: 1px solid rgba(255,45,85,.3);
+    color: var(--neon-red); padding: 5px 14px; border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .live-dot {
+    width: 7px; height: 7px; background: var(--neon-red);
+    border-radius: 50%; animation: blink 1s ease-in-out infinite;
+  }
+  /* Gauge chart wrapper */
+  .gauge-wrap {
+    position: relative; height: 200px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+  }
+  .gauge-num {
+    position: absolute;
+    font-family: var(--font-display); font-size: 40px; font-weight: 900;
+    color: var(--neon-red); bottom: 20px;
+  }
+  .gauge-lbl {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-muted); letter-spacing: 2px;
+    position: absolute; bottom: 4px;
+  }
+  /* Activity feed */
+  .activity-feed {
+    display: flex; flex-direction: column; gap: 0;
+    max-height: 340px; overflow-y: auto;
+  }
+  .activity-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 22px; border-bottom: 1px solid rgba(26,37,64,.5);
+    transition: background .2s;
+  }
+  .activity-item:hover { background: rgba(0,180,255,.03); }
+  .activity-item:last-child { border-bottom: none; }
+  .act-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .act-icon.phishing  { background: rgba(255,45,85,.15); }
+  .act-icon.safe       { background: rgba(0,255,136,.15); }
+  .act-icon.suspicious { background: rgba(255,215,0,.15); }
+  .act-url {
+    flex: 1; font-family: var(--font-mono); font-size: 12px;
+    color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .act-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+  /* Top threats table */
+  .threats-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px;
+  }
+  @media(max-width:760px){ .threats-grid { grid-template-columns:1fr; } }
+
+  .keyword-bars { padding: 0 4px; }
+  .kw-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .kw-label {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-muted); width: 90px; flex-shrink: 0;
+  }
+  .kw-bar-track {
+    flex: 1; background: var(--bg-card);
+    border-radius: 4px; height: 6px; overflow: hidden;
+  }
+  .kw-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--neon-red), var(--neon-yellow));
+  }
+  .kw-count {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--neon-red); width: 30px; text-align: right;
+  }
+  /* Back button */
+  .back-btn {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--neon-blue); background: rgba(0,180,255,.08);
+    border: 1px solid rgba(0,180,255,.2); padding: 7px 16px;
+    border-radius: 6px; cursor: pointer; text-decoration: none;
+    transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .back-btn:hover { background: rgba(0,180,255,.15); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <div>
+        <h1>PHISHGUARD AI</h1>
+        <p>SOC ANALYST DASHBOARD</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="status-dot"></div>MONITORING ACTIVE
+      </div>
+      <a href="index.html" class="back-btn">← BACK TO SCANNER</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="dash-hero">
+    <div class="live-badge"><div class="live-dot"></div>LIVE THREAT INTELLIGENCE</div>
+    <h2>SECURITY OPERATIONS CENTER</h2>
+    <p>[ REAL-TIME PHISHING THREAT MONITORING & ANALYTICS ]</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" style="margin-bottom:28px">
+    <div class="stat-card blue">
+      <div class="stat-lbl">TOTAL SCANNED</div>
+      <div class="stat-val" id="statTotal">—</div>
+      <div class="stat-sub">All-time URLs analyzed</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-lbl">PHISHING DETECTED</div>
+      <div class="stat-val" id="statPhishing">—</div>
+      <div class="stat-sub">Malicious URLs blocked</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-lbl">SUSPICIOUS</div>
+      <div class="stat-val" id="statSuspicious">—</div>
+      <div class="stat-sub">Flagged for review</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-lbl">SAFE URLs</div>
+      <div class="stat-val" id="statSafe">—</div>
+      <div class="stat-sub">Legitimate websites</div>
+    </div>
+  </div>
+
+  <!-- Threat rate bar -->
+  <div class="card" style="margin-bottom:28px;padding:20px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--text-muted)">OVERALL THREAT RATE</span>
+      <span id="threatRateLabel" style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--neon-red)">0%</span>
+    </div>
+    <div class="threat-bar-wrap">
+      <div class="threat-bar-fill" id="threatBarFill" style="width:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">0% — Safe</span>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">100% — Critical</span>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="charts-grid" style="margin-bottom:28px">
+    <div class="chart-card">
+      <div class="chart-title">📊 Verdict Distribution</div>
+      <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📈 Scan History (Last 15)</div>
+      <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Keyword + Gauge -->
+  <div class="threats-grid">
+    <div class="chart-card">
+      <div class="chart-title">🔑 Top Phishing Keywords Detected</div>
+      <div class="keyword-bars" id="keywordBars">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);padding:20px 0;text-align:center">
+          No data yet
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🎯 Threat Gauge</div>
+      <div class="gauge-wrap">
+        <canvas id="gaugeChart" style="max-height:160px"></canvas>
+        <div class="gauge-num" id="gaugeNum">0%</div>
+        <div class="gauge-lbl">THREAT LEVEL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="section-head" style="margin:28px 0 16px">
+    <h2>LIVE SCAN FEED</h2><div class="section-line"></div>
+  </div>
+  <div class="tbl-card">
+    <div class="tbl-header">
+      <span class="tbl-title">RECENT DETECTIONS</span>
+      <span id="feedCount" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">0 records</span>
+    </div>
+    <div class="activity-feed" id="activityFeed">
+      <div class="empty-state">No scans yet — run the scanner to populate this feed.</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API_BASE = "http://localhost:5000/api";
+let pieChart = null, lineChart = null, gaugeChart = null;
+
+async function loadDashboard() {
+  let stats = { total: 0, phishing: 0, safe: 0, suspicious: 0 };
+  let scans = [];
+
+  try {
+    const [sr, sc] = await Promise.all([
+      fetch(`${API_BASE}/stats`), fetch(`${API_BASE}/scans?limit=100`)
+    ]);
+    stats = await sr.json();
+    scans = await sc.json();
+  } catch(e) {
+    document.getElementById("activityFeed").innerHTML =
+      `<div class="empty-state">⚠️ Backend offline (http://localhost:5000)<br>Run: <code>python backend/app.py</code></div>`;
+  }
+
+  // Stats
+  document.getElementById("statTotal").textContent     = stats.total;
+  document.getElementById("statPhishing").textContent  = stats.phishing;
+  document.getElementById("statSuspicious").textContent= stats.suspicious || 0;
+  document.getElementById("statSafe").textContent      = stats.safe;
+
+  const rate = stats.total > 0 ? Math.round((stats.phishing / stats.total) * 100) : 0;
+  document.getElementById("threatRateLabel").textContent = rate + "%";
+  setTimeout(() => {
+    document.getElementById("threatBarFill").style.width = rate + "%";
+  }, 200);
+
+  // Pie chart
+  const pCtx = document.getElementById("pieChart").getContext("2d");
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(pCtx, {
+    type: "doughnut",
+    data: {
+      labels: ["Phishing", "Suspicious", "Safe"],
+      datasets: [{
+        data: [stats.phishing, stats.suspicious || 0, stats.safe],
+        backgroundColor: ["rgba(255,45,85,.85)","rgba(255,215,0,.85)","rgba(0,255,136,.85)"],
+        borderColor: ["#ff2d55","#ffd700","#00ff88"],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "68%",
+      plugins: { legend: { labels: { color: "#4a6080", font: { family: "Share Tech Mono", size: 11 } } } }
+    }
+  });
+
+  // Line chart (last 15 scans confidence over time)
+  const last15 = scans.slice(0, 15).reverse();
+  const lCtx = document.getElementById("lineChart").getContext("2d");
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(lCtx, {
+    type: "line",
+    data: {
+      labels: last15.map((_, i) => "#" + (i + 1)),
+      datasets: [{
+        label: "Confidence %",
+        data: last15.map(s => s.confidence),
+        borderColor: "#00b4ff",
+        backgroundColor: "rgba(0,180,255,.08)",
+        pointBackgroundColor: last15.map(s =>
+          s.verdict === "phishing" ? "#ff2d55" : s.verdict === "suspicious" ? "#ffd700" : "#00ff88"),
+        pointRadius: 5,
+        tension: 0.3, fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: "rgba(26,37,64,.8)" }, ticks: { color: "#4a6080", font: { family: "Share Tech Mono", size: 10 } } },
+        y: { grid: { color: "rgba(26,37,64,.8)" }, ticks: { color: "#4a6080", font: { family: "Share Tech Mono", size: 10 } }, min: 0, max: 100 }
+      }
+    }
+  });
+
+  // Gauge (doughnut half)
+  const gCtx = document.getElementById("gaugeChart").getContext("2d");
+  if (gaugeChart) gaugeChart.destroy();
+  gaugeChart = new Chart(gCtx, {
+    type: "doughnut",
+    data: {
+      datasets: [{
+        data: [rate, 100 - rate],
+        backgroundColor: [
+          rate >= 60 ? "rgba(255,45,85,.8)" : rate >= 30 ? "rgba(255,215,0,.8)" : "rgba(0,255,136,.8)",
+          "rgba(26,37,64,.4)"
+        ],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      circumference: 180, rotation: -90,
+      cutout: "75%",
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+  document.getElementById("gaugeNum").textContent = rate + "%";
+  document.getElementById("gaugeNum").style.color =
+    rate >= 60 ? "var(--neon-red)" : rate >= 30 ? "var(--neon-yellow)" : "var(--neon-green)";
+
+  // Keyword frequency
+  const kwMap = {};
+  scans.forEach(s => {
+    const f = typeof s.features === "string" ? JSON.parse(s.features) : s.features;
+    (f?.found_keywords || []).forEach(k => { kwMap[k] = (kwMap[k] || 0) + 1; });
+  });
+  const topKws = Object.entries(kwMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxKw = topKws[0]?.[1] || 1;
+  const kwEl = document.getElementById("keywordBars");
+  if (topKws.length === 0) {
+    kwEl.innerHTML = `<div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);padding:20px 0;text-align:center">No keyword data yet</div>`;
+  } else {
+    kwEl.innerHTML = topKws.map(([kw, cnt]) => `
+      <div class="kw-row">
+        <span class="kw-label">${kw}</span>
+        <div class="kw-bar-track">
+          <div class="kw-bar-fill" style="width:${(cnt/maxKw*100).toFixed(0)}%"></div>
+        </div>
+        <span class="kw-count">${cnt}</span>
+      </div>
+    `).join("");
+  }
+
+  // Activity feed
+  const feed = document.getElementById("activityFeed");
+  document.getElementById("feedCount").textContent = scans.length + " records";
+  if (scans.length === 0) {
+    feed.innerHTML = `<div class="empty-state">No scans yet — run the scanner to populate this feed.</div>`;
+  } else {
+    feed.innerHTML = scans.slice(0, 30).map(s => {
+      const icon = s.verdict === "phishing" ? "🚨" : s.verdict === "suspicious" ? "⚠️" : "✅";
+      const ts = (() => {
+        try { return new Date(s.timestamp).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
+        catch(e) { return "—"; }
+      })();
+      return `
+        <div class="activity-item">
+          <div class="act-icon ${s.verdict}">${icon}</div>
+          <span class="act-url" title="${esc(s.url)}">${esc(s.url)}</span>
+          <span class="pill ${s.verdict}" style="flex-shrink:0">${s.verdict.toUpperCase()}</span>
+          <span class="act-time">${s.confidence}% · ${ts}</span>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// Auto-refresh every 15 seconds
+loadDashboard();
+setInterval(loadDashboard, 15000);
+</script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PhishGuard AI — URL Scanner</title>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ═══ HEADER ═══ -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <div>
+        <h1>PHISHGUARD AI</h1>
+        <p>ADVANCED THREAT INTELLIGENCE PLATFORM v3.1</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="status-dot"></div>ENGINE ONLINE
+      </div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showPage('scan')">🔍 SCANNER</button>
+        <button class="nav-tab" onclick="showPage('dashboard')">📊 DASHBOARD</button>
+        <button class="nav-tab" onclick="showPage('history')">🧾 LOGS</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ SCAN PAGE ═══ -->
+  <div id="page-scan" class="page active">
+
+    <div style="text-align:center;padding:36px 0 28px">
+      <h2 style="font-family:var(--font-display);font-size:32px;font-weight:900;letter-spacing:3px;
+        background:linear-gradient(90deg,#fff 0%,var(--neon-blue) 50%,var(--neon-green) 100%);
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px">
+        URL THREAT ANALYSIS
+      </h2>
+      <p style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);letter-spacing:2px">
+        [ AI-POWERED PHISHING DETECTION ENGINE ]
+      </p>
+    </div>
+
+    <!-- Scan Box -->
+    <div class="card card-top-line" style="margin-bottom:20px">
+      <div class="input-row">
+        <div class="url-input-wrap">
+          <span class="url-input-icon">🔗</span>
+          <input type="text" id="urlInput" placeholder="Enter URL to analyze…  e.g. http://suspicious-login.com"/>
+        </div>
+        <button class="btn-primary" id="scanBtn" onclick="startScan()">⚡ ANALYZE</button>
+      </div>
+      <div class="sample-row">
+        <span class="sample-label">TRY:</span>
+        <button class="sample-btn phish" onclick="loadSample('http://secure-login-paypal.verification-update.com/signin')">Phishing #1</button>
+        <button class="sample-btn phish" onclick="loadSample('http://192.168.1.1/bank/login?verify=true')">Phishing #2</button>
+        <button class="sample-btn phish" onclick="loadSample('http://amazon-security-alert.com//verify//account@phish')">Phishing #3</button>
+        <button class="sample-btn safe"  onclick="loadSample('https://www.google.com')">Safe #1</button>
+        <button class="sample-btn safe"  onclick="loadSample('https://github.com/openai/gpt-4')">Safe #2</button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingBlock">
+      <div class="radar"><div class="radar-core"></div></div>
+      <div class="loading-steps">
+        <div class="loading-step" id="step1"><span>🔗</span> Parsing URL structure…</div>
+        <div class="loading-step" id="step2"><span>⚙️</span> Extracting 20+ features…</div>
+        <div class="loading-step" id="step3"><span>🌐</span> Checking domain patterns…</div>
+        <div class="loading-step" id="step4"><span>🤖</span> Running ML threat model…</div>
+        <div class="loading-step" id="step5"><span>📊</span> Generating threat report…</div>
+      </div>
+    </div>
+
+    <!-- Result Card -->
+    <div id="resultCard">
+      <div class="result-top">
+        <div class="result-verdict">
+          <div class="verdict-icon" id="verdictIcon"></div>
+          <div>
+            <div class="verdict-label" id="verdictLabel"></div>
+            <div class="verdict-sub" id="verdictSub"></div>
+          </div>
+        </div>
+        <div class="conf-block">
+          <div class="conf-num" id="confNum"></div>
+          <div class="conf-lbl" id="confLbl">CONFIDENCE</div>
+          <div class="conf-bar"><div class="conf-fill" id="confFill"></div></div>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-bottom:14px">
+        <h2>FEATURE ANALYSIS</h2><div class="section-line"></div>
+      </div>
+      <div class="features-grid" id="featuresGrid"></div>
+
+      <div class="section-head" style="margin:22px 0 14px">
+        <h2>THREAT INTELLIGENCE REPORT</h2><div class="section-line"></div>
+      </div>
+      <div class="ai-box">
+        <div class="ai-box-header">
+          <span class="ai-badge">⚡ AI ANALYSIS</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">Feature-based threat assessment</span>
+        </div>
+        <div class="ai-text" id="aiText"></div>
+      </div>
+    </div>
+
+  </div><!-- /scan -->
+
+  <!-- ═══ DASHBOARD PAGE ═══ -->
+  <div id="page-dashboard" class="page" style="display:none">
+
+    <div class="section-head" style="margin-bottom:24px">
+      <h2>SOC THREAT DASHBOARD</h2><div class="section-line"></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="stat-lbl">TOTAL SCANNED</div>
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-sub">All-time URLs analyzed</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-lbl">PHISHING DETECTED</div>
+        <div class="stat-val" id="statPhishing">0</div>
+        <div class="stat-sub">Malicious URLs found</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-lbl">SAFE URLs</div>
+        <div class="stat-val" id="statSafe">0</div>
+        <div class="stat-sub">Legitimate websites</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-lbl">THREAT RATE</div>
+        <div class="stat-val" id="statRate">0%</div>
+        <div class="stat-sub">% URLs flagged as phishing</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">📊 Threat Distribution</div>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 Confidence — Last 10 Scans</div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-head" style="margin-bottom:16px">
+      <h2>RECENT THREATS</h2><div class="section-line"></div>
+    </div>
+    <div class="tbl-card">
+      <table>
+        <thead><tr><th>URL</th><th>VERDICT</th><th>CONFIDENCE</th><th>TIME</th></tr></thead>
+        <tbody id="recentBody"></tbody>
+      </table>
+      <div class="empty-state" id="dashEmpty">No scans yet. Go to the Scanner tab to analyze a URL.</div>
+    </div>
+
+  </div><!-- /dashboard -->
+
+  <!-- ═══ HISTORY PAGE ═══ -->
+  <div id="page-history" class="page" style="display:none">
+
+    <div class="section-head" style="margin-bottom:24px">
+      <h2>SCAN LOG DATABASE</h2><div class="section-line"></div>
+    </div>
+
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <span class="tbl-title">ALL SCAN RECORDS</span>
+        <button class="btn-danger" onclick="clearHistory()">🗑 CLEAR ALL</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>URL</th><th>VERDICT</th><th>CONFIDENCE</th><th>KEYWORDS</th><th>TIMESTAMP</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+      <div class="empty-state" id="histEmpty">No records yet.</div>
+    </div>
+
+  </div><!-- /history -->
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Page switching helper (CSS) -->
+<style>
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+
+<script src="script.js"></script>
+</body>
+</html>
