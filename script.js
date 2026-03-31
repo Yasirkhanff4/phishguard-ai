@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
-const API_BASE = "http://localhost:5000/api"; // Flask backend
+const API_BASE = "https://Yasirkhanff4-phishguard-ai.hf.space/api"; // Flask backend
 let scanHistory = [];
 let pieChart = null;
 let barChart = null;
